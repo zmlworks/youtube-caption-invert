@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>字幕の色を反転</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "IPA Pゴシック", "Hiragino Sans", sans-serif;
+      }
+      body {
+        margin: 0;
+        width: 320px;
+        background: #141311;
+        color: #f3efe6;
+      }
+      main {
+        padding: 14px 16px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      fieldset {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      legend {
+        padding: 0;
+        margin-bottom: 4px;
+        font-size: 12px;
+        color: #f3efe6;
+      }
+      fieldset label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 36px;
+        padding: 0 10px;
+        border: 1px solid #3a342c;
+        border-radius: 8px;
+        background: #1e1c19;
+        font-size: 14px;
+      }
+      fieldset label:has(input:checked),
+      fieldset label.is-checked {
+        border-color: #ff4d2e;
+      }
+      .switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+      .lang {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+      }
+      label.check {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        min-height: 36px;
+        padding-left: 8px;
+        font-size: 14px;
+      }
+      .shortcut {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding-left: 8px;
+        font-size: 14px;
+      }
+      .shortcut label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .shortcut-key {
+        display: flex;
+        justify-content: flex-end;
+      }
+      .field {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .weight-field {
+        margin-right: 22px;
+      }
+      .unit {
+        font-size: 13px;
+      }
+      label.row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 44px;
+        font-size: 14px;
+      }
+      select,
+      input[type="number"] {
+        min-height: 36px;
+        background: #1e1c19;
+        color: #f3efe6;
+        border: 1px solid #3a342c;
+        border-radius: 8px;
+        font: inherit;
+        padding: 0 8px;
+      }
+      input[type="number"] {
+        width: 72px;
+      }
+      input[type="radio"],
+      input[type="checkbox"] {
+        accent-color: #ff4d2e;
+      }
+      .switch {
+        appearance: none;
+        width: 44px;
+        height: 26px;
+        margin: 0;
+        border-radius: 13px;
+        background: #3a342c;
+        position: relative;
+        cursor: pointer;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #f3efe6;
+        top: 3px;
+        left: 3px;
+      }
+      .switch:checked {
+        background: #ff4d2e;
+      }
+      .switch:checked::after {
+        left: 21px;
+      }
+      .switch-sm {
+        width: 36px;
+        height: 22px;
+      }
+      .switch-sm::after {
+        width: 16px;
+        height: 16px;
+        top: 3px;
+        left: 3px;
+      }
+      .switch-sm:checked::after {
+        left: 17px;
+      }
+      button.key {
+        min-height: 32px;
+        padding: 0 10px;
+        border: 1px solid #3a342c;
+        border-radius: 8px;
+        background: #141311;
+        color: #f3efe6;
+        font: inherit;
+        font-size: 13px;
+      }
+      button.key.is-on {
+        border-color: #ff4d2e;
+      }
+      .rgb {
+        display: flex;
+        gap: 6px;
+      }
+      .rgb label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+      }
+      .rgb input {
+        width: 64px;
+      }
+      .colors {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .colors.is-off {
+        opacity: 0.45;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 data-i18n="title">字幕の色を反転</h1>
+      <div class="switch-row">
+        <input id="enabled" class="switch" type="checkbox" aria-label="オン" />
+        <label class="lang">
+          EN
+          <input id="lang" class="switch switch-sm" type="checkbox" />
+        </label>
+      </div>
+      <label class="check">
+        <input id="center" type="checkbox" />
+        <span data-i18n="center">中央に寄せる</span>
+      </label>
+      <div class="shortcut">
+        <label><input id="shortcutOn" type="checkbox" checked /> <span data-i18n="shortcut">ショートカットキーで動作を切り替える</span></label>
+        <div class="shortcut-key">
+          <button id="shortcut" class="key" type="button">Alt+Shift+I</button>
+        </div>
+      </div>
+      <label class="check">
+        <input id="videoLayer" type="checkbox" />
+        <span data-i18n="videoLayer">映像を別レイヤーにする（ちらつき対策）</span>
+      </label>
+      <fieldset>
+        <legend data-i18n="mode">動作</legend>
+        <label><input type="radio" name="mode" value="invert" /> <span data-i18n="invert">反転</span></label>
+        <label><input type="radio" name="mode" value="stroke" /> <span data-i18n="stroke">反転 + 輪郭</span></label>
+        <label><input type="radio" name="mode" value="edge" /> <span data-i18n="edge">二重フチ</span></label>
+      </fieldset>
+      <label class="row">
+        <span data-i18n="outline">輪郭の太さ（反転 + 輪郭のみ）</span>
+        <span class="field">
+          <input id="strokeWidth" type="number" min="0" max="16" step="1" value="2" />
+          <span class="unit">px</span>
+        </span>
+      </label>
+      <label class="row">
+        <span data-i18n="weight">文字の太さ</span>
+        <span class="field weight-field">
+          <select id="weight">
+            <option value="500">500</option>
+            <option value="700" selected>700</option>
+            <option value="900">900</option>
+          </select>
+        </span>
+      </label>
+      <label class="row">
+        <span data-i18n="fontScale">字幕サイズ</span>
+        <span class="field">
+          <select id="fontPct">
+            <option value="50">50%</option>
+            <option value="75">75%</option>
+            <option value="100" selected data-i18n="fontOff">100%（標準）</option>
+            <option value="150">150%</option>
+            <option value="200">200%</option>
+            <option value="300">300%</option>
+            <option value="400">400%</option>
+          </select>
+        </span>
+      </label>
+      <label class="check">
+        <input id="edgeCustom" type="checkbox" />
+        <span data-i18n="edgeColor">二重フチの色を指定</span>
+      </label>
+      <div class="colors" id="edgeColors">
+        <div class="rgb">
+          <label>R <input id="fillR" type="number" min="0" max="255" step="1" value="12" /></label>
+          <label>G <input id="fillG" type="number" min="0" max="255" step="1" value="39" /></label>
+          <label>B <input id="fillB" type="number" min="0" max="255" step="1" value="80" /></label>
+        </div>
+        <div class="rgb">
+          <label>R <input id="midR" type="number" min="0" max="255" step="1" value="205" /></label>
+          <label>G <input id="midG" type="number" min="0" max="255" step="1" value="225" /></label>
+          <label>B <input id="midB" type="number" min="0" max="255" step="1" value="255" /></label>
+        </div>
+      </div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

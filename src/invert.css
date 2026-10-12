@@ -1,0 +1,130 @@
+/* 中央なしの反転・輪郭は元の字幕へ足す。中央寄せと二重フチは元の見た目を消して描き直す。 */
+/* 2.4.0: 字幕サイズ用の規則と、軽くした「映像を別レイヤー」の規則を追加。 2.4.1: 反転の合成を字幕の入れ物へ移動。 */
+
+html.ytic-on .ytp-caption-window-container,
+html.ytic-on .caption-window,
+html.ytic-on .captions-text,
+html.ytic-on .caption-visual-line,
+html.ytic-on .ytp-caption-segment,
+html.ytic-on .ytp-caption-segment * {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  filter: none !important;
+}
+
+/* 映像を別レイヤー: 反転（差の合成）を使うモードで、字幕が出ている間だけ映像を独立レイヤーにする。
+   ytic-cc-live は content.js がプレーヤー要素に付け外しする（字幕が 15 秒出なければ外す）。
+   backface-visibility は Firefox では効果がなく、余計な合成面を作ることがあるので外した。 */
+html.ytic-on:not(.ytic-mode-edge) .ytic-cc-live .html5-main-video {
+  will-change: transform;
+}
+
+/* 2.4.1: 差の合成（反転）は字幕の入れ物で 1 回だけ行う。
+   字幕の枠ごとに合成すると、投稿者が同じ字幕を同じ位置に 2 枚重ねている動画（影＋縁取りの重ね技）で
+   反転が 2 回かかって元に戻り、字幕が透明に見えていた。枠どうしは普通に重ねてから 1 回だけ反転する。 */
+html.ytic-native .ytp-caption-window-container,
+html.ytic-own.ytic-invert .ytp-caption-window-container,
+html.ytic-own.ytic-stroke .ytp-caption-window-container {
+  /* 合成を付けると入れ物が重なり順の単位になる。YouTube は字幕の枠に z-index:41、映像に z-index:10 を
+     付けているので、入れ物にも 41 を付けないと字幕が映像の下に隠れる。 */
+  z-index: 41 !important;
+  opacity: 1 !important;
+  isolation: auto !important;
+  backdrop-filter: none !important;
+  mix-blend-mode: difference !important;
+}
+
+html.ytic-native .caption-window {
+  opacity: 1 !important;
+  isolation: auto !important;
+  backdrop-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+html.ytic-native .ytp-caption-segment,
+html.ytic-native .ytp-caption-segment * {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 transparent !important;
+  mix-blend-mode: normal !important;
+  font-weight: var(--ytic-weight, 700) !important;
+}
+
+html.ytic-native.ytic-stroke .ytp-caption-segment,
+html.ytic-native.ytic-stroke .ytp-caption-segment * {
+  -webkit-text-stroke: var(--ytic-stroke-width, 2px) rgb(128, 128, 128) !important;
+  paint-order: stroke fill !important;
+}
+
+html.ytic-own .ytp-caption-window-container,
+html.ytic-own .caption-window {
+  opacity: 1 !important;
+  isolation: auto !important;
+  backdrop-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+html.ytic-own .ytp-caption-segment,
+html.ytic-own .ytp-caption-segment * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 transparent !important;
+  mix-blend-mode: normal !important;
+  font-weight: var(--ytic-weight, 700) !important;
+}
+
+html.ytic-own.ytic-mode-edge .ytp-caption-segment,
+html.ytic-own.ytic-mode-edge .ytp-caption-segment * {
+  color: var(--ytic-fill, #fff) !important;
+  -webkit-text-fill-color: var(--ytic-fill, #fff) !important;
+  text-shadow: var(--ytic-rim) !important;
+}
+
+
+html.ytic-own.ytic-invert .ytp-caption-segment,
+html.ytic-own.ytic-invert .ytp-caption-segment *,
+html.ytic-own.ytic-stroke .ytp-caption-segment,
+html.ytic-own.ytic-stroke .ytp-caption-segment * {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+html.ytic-own.ytic-stroke .ytp-caption-segment,
+html.ytic-own.ytic-stroke .ytp-caption-segment * {
+  -webkit-text-stroke: var(--ytic-stroke-width, 2px) rgb(128, 128, 128) !important;
+  paint-order: stroke fill !important;
+}
+
+html[data-ytic-center="1"] .caption-window {
+  left: 50% !important;
+  right: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  transform: translateX(-50%) !important;
+  text-align: center !important;
+}
+
+html[data-ytic-center="1"] .ytp-caption-segment,
+html[data-ytic-center="1"] .caption-visual-line {
+  text-align: center !important;
+}
+
+/* 字幕サイズ（50%〜400%）。文字サイズは content.js が各 .ytp-caption-segment に !important で書く。
+   ここでは字幕の枠（YouTube が固定の高さと overflow:hidden を書く）を文字に合わせて広げ、
+   画面からはみ出さないよう幅を抑え、中央寄せの字幕は中央のまま保つ。 */
+html.ytic-on.ytic-scaled .caption-window {
+  height: auto !important;
+  max-width: 96% !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+html.ytic-on.ytic-scaled .caption-window.ytp-caption-window-bottom[style*="margin-left"],
+html.ytic-on.ytic-scaled .caption-window.ytp-caption-window-top[style*="margin-left"] {
+  left: 50% !important;
+  right: auto !important;
+  margin-left: 0 !important;
+  transform: translateX(-50%) !important;
+}
