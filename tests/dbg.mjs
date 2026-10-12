@@ -1,0 +1,12 @@
+import { chromium, devices } from "playwright";
+import fs from "fs";
+const b = await chromium.launch(); const ctx = await b.newContext({ ...devices["Pixel 7"] }); const p = await ctx.newPage();
+await p.addInitScript({ content: "window.__initialStore={settingsRev:1,androidRev:1,enabled:true,mode:'invert'};" + fs.readFileSync("stub.js","utf8") });
+await p.goto("./mobile.html");
+if (process.argv[2]) await p.addScriptTag({ content: fs.readFileSync(process.argv[2]+"/content.js","utf8") });
+await p.evaluate(()=>{ytShow("abc");window.__log=[];const ov=document.getElementById("player-control-overlay");["click","touchend","pointerup","touchstart","pointerdown"].forEach(t=>ov.addEventListener(t,()=>__log.push(t)))});
+const s = await ctx.newCDPSession(p);
+await s.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:30,y:30}]});await p.waitForTimeout(50);
+await s.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});await p.waitForTimeout(500);
+console.log(await p.evaluate(()=>__log));
+await b.close();

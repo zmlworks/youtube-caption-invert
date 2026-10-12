@@ -7,6 +7,7 @@ const shortcutBtn = document.getElementById("shortcut");
 const strokeWidth = document.getElementById("strokeWidth");
 const weight = document.getElementById("weight");
 const fontPct = document.getElementById("fontPct");
+const capPos = document.getElementById("capPos");
 const videoLayer = document.getElementById("videoLayer");
 const edgeCustom = document.getElementById("edgeCustom");
 const edgeColors = document.getElementById("edgeColors");
@@ -29,6 +30,9 @@ const TEXT = {
     weight: "文字の太さ",
     fontScale: "字幕サイズ",
     fontOff: "100%（標準）",
+    capPos: "字幕の高さ",
+    capPosDefault: "1（YouTube標準）",
+    capPosTop: "10（いちばん上）",
     edgeColor: "二重フチの色を指定",
     recording: "キー",
   },
@@ -46,6 +50,9 @@ const TEXT = {
     weight: "Font weight",
     fontScale: "Caption size",
     fontOff: "100% (default)",
+    capPos: "Caption height",
+    capPosDefault: "1 (YouTube default)",
+    capPosTop: "10 (top)",
     edgeColor: "Set double-outline colors",
     recording: "Key",
   },
@@ -81,6 +88,11 @@ function normPct(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return 100;
   return steps.reduce((best, step) => (Math.abs(step - n) < Math.abs(best - n) ? step : best), 100);
+}
+
+function normPos(value) {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1;
 }
 
 function normWidth(value) {
@@ -128,6 +140,7 @@ function migrate(data) {
     strokeWidth: fresh ? 2 : normWidth(data.strokeWidth),
     weight: fresh ? 700 : normWeight(data.weight),
     fontPct: normPct(data.fontPct),
+    capPos: normPos(data.capPos),
     videoLayer: data.videoLayer === true,
     settingsRev: 1,
     lang: data.lang === "en" ? "en" : "ja",
@@ -191,6 +204,7 @@ function paint(data) {
   strokeWidth.value = String(next.strokeWidth);
   weight.value = String(next.weight);
   fontPct.value = String(next.fontPct);
+  capPos.value = String(next.capPos);
   videoLayer.checked = next.videoLayer;
   edgeCustom.checked = next.edgeCustom;
   next.fill.forEach((channel, i) => {
@@ -216,6 +230,7 @@ function save(extra) {
         strokeWidth: normWidth(strokeWidth.value),
         weight: normWeight(weight.value),
         fontPct: normPct(fontPct.value),
+        capPos: normPos(capPos.value),
         videoLayer: videoLayer.checked,
         edgeCustom: edgeCustom.checked,
         fill: readRgb(fillInputs, [12, 39, 80]),
@@ -284,6 +299,7 @@ edgeCustom.addEventListener("change", () => {
 });
 weight.addEventListener("change", () => save());
 fontPct.addEventListener("change", () => save());
+capPos.addEventListener("change", () => save());
 videoLayer.addEventListener("change", () => save());
 strokeWidth.addEventListener("change", () => {
   strokeWidth.value = String(normWidth(strokeWidth.value));

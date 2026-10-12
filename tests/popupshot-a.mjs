@@ -1,0 +1,16 @@
+import { firefox } from "playwright";
+import fs from "fs";
+const b = await firefox.launch(); const page = await b.newPage({ viewport: { width: 360, height: 900 }, deviceScaleFactor: 2 });
+page.on("pageerror", e => console.log("ERR", e.message));
+await page.addInitScript({ content: "window.__initialStore=" + JSON.stringify({ settingsRev: 1, enabled: true, mode: "invert", fontPct: 100, shortcut: { key: "z" }, weight: 900, fill: [1,2,3] }) + ";" + fs.readFileSync("stub.js","utf8") });
+await page.goto("../src/popup.html"); await page.waitForTimeout(300);
+const shown = await page.evaluate(() => ({ center: center.checked, cap: capPos.value, w: strokeWidth.value }));
+await page.click("input[value=edge]"); await page.waitForTimeout(100);
+const after = await page.evaluate(() => ({ ...__store }));
+await page.click("input[value=invert]"); await page.waitForTimeout(100);
+const minH = await page.evaluate(() => Math.min(...[...document.querySelectorAll("label,select")].map(e => e.getBoundingClientRect().height)));
+const h = await page.evaluate(() => document.body.scrollHeight);
+await page.setViewportSize({ width: 360, height: h });
+await page.screenshot({ path: "../src/popup.png", fullPage: true });
+console.log(JSON.stringify({ shown, after, minH, h }));
+await b.close();

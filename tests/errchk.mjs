@@ -1,0 +1,10 @@
+import { firefox } from "playwright";
+import fs from "fs";
+const b = await firefox.launch(); const p = await b.newPage();
+p.on("console", m => console.log("C:", m.text())); p.on("pageerror", e => console.log("ERR:", e.message));
+await p.addInitScript({ content: "window.__cfg={fs:21.33};window.__initialStore={settingsRev:1,androidRev:1,enabled:true,mode:'invert',fontPct:300};" + fs.readFileSync("stub.js","utf8") });
+await p.goto("./rollup.html");
+await p.addScriptTag({ content: fs.readFileSync(process.argv[2]+"/content.js","utf8") });
+await p.waitForTimeout(300);
+console.log(await p.evaluate(()=>document.documentElement.outerHTML.slice(0,300)));
+await b.close();

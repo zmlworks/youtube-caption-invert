@@ -1,4 +1,4 @@
-/* 字幕の色を反転 2.4.2
+/* 字幕の色を反転 2.4.3
  * - 反転 / 反転+輪郭 / 二重フチ は CSS（invert.css）で描く。ここではクラスと CSS 変数を切り替えるだけ。
  * - 字幕サイズ: YouTube は .ytp-caption-segment のインライン style に font-size を書き、
  *   プレーヤーのサイズが変わるたびに書き直す。その値を元に倍率をかけて !important で上書きする。
@@ -23,8 +23,8 @@
   const path = location.pathname || "";
   if (isTop ? /^\/live_chat/.test(path) : !/^\/embed\//.test(path)) return;
 
-  if (root.dataset.yticExt === "242") return;
-  root.dataset.yticExt = "242";
+  if (root.dataset.yticExt === "243") return;
+  root.dataset.yticExt = "243";
 
   const MODES = ["invert", "stroke", "edge"];
   const FONT_STEPS = [50, 75, 100, 150, 200, 300, 400];
@@ -43,6 +43,7 @@
     strokeWidth: 2,
     weight: 700,
     fontPct: 100,
+    capPos: 1,
     videoLayer: false,
     edgeCustom: false,
     fill: DEFAULT_FILL.slice(),
@@ -83,6 +84,12 @@
     return FONT_STEPS.reduce((best, step) => (Math.abs(step - n) < Math.abs(best - n) ? step : best), 100);
   }
 
+  // 字幕の高さ: 1 = YouTube 標準（何もしない）、2〜10 = 下から上へ。
+  function normPos(value) {
+    const n = Math.round(Number(value));
+    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1;
+  }
+
   function normShortcut(value) {
     if (!value || typeof value !== "object" || !value.key) return Object.assign({}, DEFAULT_SHORTCUT);
     return {
@@ -109,6 +116,7 @@
       strokeWidth: fresh ? 2 : normWidth(data.strokeWidth),
       weight: fresh ? 700 : normWeight(data.weight),
       fontPct: normPct(data.fontPct),
+      capPos: normPos(data.capPos),
       videoLayer: data.videoLayer === true,
       settingsRev: 1,
       lang: data.lang === "en" ? "en" : "ja",
@@ -133,6 +141,7 @@
     state.strokeWidth = next.strokeWidth;
     state.weight = next.weight;
     state.fontPct = next.fontPct;
+    state.capPos = next.capPos;
     state.videoLayer = next.videoLayer;
     state.edgeCustom = next.edgeCustom;
     state.fill = next.fill;
@@ -198,6 +207,11 @@
     root.classList.toggle("ytic-own", on && !native);
     if (centerOn) root.dataset.yticCenter = "1";
     else delete root.dataset.yticCenter;
+    // 字幕の高さ。位置は invert.css が YouTube 標準の位置（bottom: 2%）にある枠だけを動かす。
+    const pos = on && state.capPos > 1 ? String(state.capPos) : "";
+    if (pos) {
+      if (root.dataset.yticPos !== pos) root.dataset.yticPos = pos;
+    } else delete root.dataset.yticPos;
     root.classList.toggle("ytic-invert", on && state.mode === "invert");
     root.classList.toggle("ytic-stroke", on && state.mode === "stroke");
     root.classList.toggle("ytic-mode-edge", on && state.mode === "edge");

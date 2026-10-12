@@ -1,5 +1,5 @@
 /* 中央なしの反転・輪郭は元の字幕へ足す。中央寄せと二重フチは元の見た目を消して描き直す。 */
-/* 2.4.0: 字幕サイズ用の規則と、軽くした「映像を別レイヤー」の規則を追加。 2.4.1: 反転の合成を字幕の入れ物へ移動。 2.4.2: ロールアップ字幕の拡大と中央寄せを YouTube の計測と両立する方式に変更。 */
+/* 2.4.0: 字幕サイズ用の規則と、軽くした「映像を別レイヤー」の規則を追加。 2.4.1: 反転の合成を字幕の入れ物へ移動。 2.4.2: ロールアップ字幕の拡大と中央寄せを YouTube の計測と両立する方式に変更。 2.4.3: 字幕の高さを追加。 */
 
 html.ytic-on .ytp-caption-window-container,
 html.ytic-on .caption-window,
@@ -152,3 +152,22 @@ html.ytic-on.ytic-scaled .caption-window:not(.ytp-caption-window-rollup).ytp-cap
   margin-left: auto !important;
   margin-right: auto !important;
 }
+
+/* 字幕の高さ（2.4.3）。1 = YouTube 標準（この規則は効かない）、2〜10 = 下から上へ。
+   ・対象は YouTube が標準の位置に置いた枠だけ（インラインに bottom: 2% がある下寄せの枠。通常の字幕も
+     自動生成のロールアップ字幕もこの位置）。投稿者が位置を指定した字幕（srv3 の wp）と、ユーザーが
+     ドラッグした字幕は bottom が 2% 以外になるので動かさない。ドラッグすると、その時点の表示位置から
+     YouTube の位置指定に切り替わる。次の動画では再びこの設定の位置から始まる。
+   ・YouTube が字幕を測るとき（top:0・bottom なし）には効かないので、ロールアップの計算は変わらない。
+     高さ・幅・transform には触らず、bottom / top だけを変える。
+   ・2〜5 は下端の位置（bottom）を指定。YouTube の操作バー回避（margin-bottom）はそのまま働く。
+   ・6〜10 は上端の位置（top）を指定し、下へ伸びるので上にはみ出さない。操作バーが出ても動かない。 */
+html.ytic-on[data-ytic-pos="2"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 12% !important; }
+html.ytic-on[data-ytic-pos="3"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 22% !important; }
+html.ytic-on[data-ytic-pos="4"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 32% !important; }
+html.ytic-on[data-ytic-pos="5"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 42% !important; }
+html.ytic-on[data-ytic-pos="6"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 42% !important; }
+html.ytic-on[data-ytic-pos="7"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 32% !important; }
+html.ytic-on[data-ytic-pos="8"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 22% !important; }
+html.ytic-on[data-ytic-pos="9"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 12% !important; }
+html.ytic-on[data-ytic-pos="10"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 2% !important; }
