@@ -203,6 +203,17 @@
       .colors.is-off {
         opacity: 0.45;
       }
+      label.check.legacy {
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 1px solid #2a2622;
+        min-height: 30px;
+        font-size: 12px;
+        color: #8a8378;
+      }
+      label.check.legacy input {
+        accent-color: #6b645a;
+      }
     </style>
   </head>
   <body>
@@ -225,10 +236,6 @@
           <button id="shortcut" class="key" type="button">Alt+Shift+I</button>
         </div>
       </div>
-      <label class="check">
-        <input id="videoLayer" type="checkbox" />
-        <span data-i18n="videoLayer">映像を別レイヤーにする（ちらつき対策）</span>
-      </label>
       <fieldset>
         <legend data-i18n="mode">動作</legend>
         <label><input type="radio" name="mode" value="invert" /> <span data-i18n="invert">反転</span></label>
@@ -282,6 +289,10 @@
           <label>B <input id="midB" type="number" min="0" max="255" step="1" value="255" /></label>
         </div>
       </div>
+      <label class="check legacy">
+        <input id="videoLayer" type="checkbox" />
+        <span data-i18n="videoLayer">映像を別レイヤーにする（ちらつき対策）</span>
+      </label>
     </main>
     <script src="popup.js"></script>
   </body>

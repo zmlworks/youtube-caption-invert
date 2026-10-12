@@ -1,7 +1,9 @@
-/* 字幕の色を反転 2.4.1
+/* 字幕の色を反転 2.4.2
  * - 反転 / 反転+輪郭 / 二重フチ は CSS（invert.css）で描く。ここではクラスと CSS 変数を切り替えるだけ。
  * - 字幕サイズ: YouTube は .ytp-caption-segment のインライン style に font-size を書き、
  *   プレーヤーのサイズが変わるたびに書き直す。その値を元に倍率をかけて !important で上書きする。
+ *   ロールアップ字幕だけは CSS 変数（--ytic-rf）で、YouTube が行の高さを測る前から大きくしておく。
+ *   倍率は YouTube の「フォント サイズ」と同じ（300% = 1.75 倍）。
  * - 監視は字幕コンテナ（.ytp-caption-window-container）だけ。ページ全体の監視は
  *   「コンテナが増えたか」を調べる予約だけで、重い処理はしない。
  */
@@ -21,8 +23,8 @@
   const path = location.pathname || "";
   if (isTop ? /^\/live_chat/.test(path) : !/^\/embed\//.test(path)) return;
 
-  if (root.dataset.yticExt === "241") return;
-  root.dataset.yticExt = "241";
+  if (root.dataset.yticExt === "242") return;
+  root.dataset.yticExt = "242";
 
   const MODES = ["invert", "stroke", "edge"];
   const FONT_STEPS = [50, 75, 100, 150, 200, 300, 400];
@@ -171,8 +173,12 @@
     if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
   }
 
+  // YouTube 自身の「フォント サイズ」と同じ意味にする。YouTube の倍率は 1 + 0.25 × 段階（-2〜4）で、
+  // 表示名と実際の倍率が違う（「300%」は 1.75 倍、「400%」は 2 倍）。captions.js の Ug$ / 設定 qNy を参照。
+  const YT_MULT = { 50: 0.5, 75: 0.75, 100: 1, 150: 1.25, 200: 1.5, 300: 1.75, 400: 2 };
+
   function currentScale() {
-    return state.enabled === true && state.fontPct !== 100 ? state.fontPct / 100 : 1;
+    return state.enabled === true && state.fontPct !== 100 ? YT_MULT[state.fontPct] || 1 : 1;
   }
 
   function videoLayerWanted() {
@@ -201,7 +207,8 @@
     setVar("--ytic-weight", String(state.weight));
     setVar("--ytic-stroke-width", state.strokeWidth + "px");
     watched.forEach((entry, container) => {
-      processTree(container, true);
+      processTree(container, true, entry);
+      setRollupFont(entry);
       updateLive(entry);
       entry.obs.takeRecords(); // 自分で書いた style の変更は捨てる
     });
@@ -226,7 +233,8 @@
       marks.set(el, per);
     }
     let m = per[prop];
-    if (!m || cur !== m.applied) {
+    if (!m || cur !== m.applied || (m.applied && st.getPropertyPriority(prop) !== "important")) {
+      // 値が違う、または !important が外れている = YouTube が書き直した（たまたま同じ値でも区別できる）。
       // YouTube が新しい値を書いた（初回・リサイズ・字幕更新）。これを基準にする。
       m = per[prop] = { base: cur, applied: "" };
     }
@@ -243,21 +251,61 @@
     m.applied = st.getPropertyValue(prop);
   }
 
-  function handleEl(el, scale) {
-    const cl = el.classList;
-    if (!cl) return;
-    if (cl.contains("ytp-caption-segment")) scaleProp(el, "font-size", scale);
-    else if (cl.contains("caption-window")) scaleProp(el, "width", scale);
+  /* ロールアップ字幕（自動生成字幕など、行が下から上へ流れる字幕）は、YouTube が行の高さを測って
+     流す量と枠の高さを決める。後から文字を大きくすると測った値と合わなくなり、行が跳ねたり戻ったりする。
+     そこでロールアップ字幕だけは、YouTube が測る前から効いている CSS（--ytic-rf）で大きくする。
+     値は「YouTube が書いた文字サイズ × 倍率」で、入れ物ごとに 1 つ。YouTube が文字サイズを書き直したら更新する。 */
+  function setRollupFont(entry) {
+    const container = entry.container;
+    const scale = currentScale();
+    const base = entry.rfBase;
+    if (scale === 1) entry.rfBase = "";
+    if (scale === 1 || !base || !/px$/.test(base) || !(parseFloat(base) > 0)) {
+      if (container.classList.contains("ytic-rf")) {
+        container.classList.remove("ytic-rf");
+        container.style.removeProperty("--ytic-rf");
+      }
+      return;
+    }
+    const want = Math.round(parseFloat(base) * scale * 100) / 100 + "px";
+    if (container.style.getPropertyValue("--ytic-rf") !== want) container.style.setProperty("--ytic-rf", want);
+    if (!container.classList.contains("ytic-rf")) container.classList.add("ytic-rf");
   }
 
-  function processTree(node, full) {
+  function noteRollupFont(entry, seg) {
+    const base = seg.style.getPropertyValue("font-size");
+    if (!base || base === entry.rfBase) return;
+    entry.rfBase = base;
+    setRollupFont(entry);
+  }
+
+  function inRollup(el) {
+    const win = el.classList.contains("caption-window") ? el : el.closest(".caption-window");
+    return !!win && win.classList.contains("ytp-caption-window-rollup");
+  }
+
+  function handleEl(el, scale, entry) {
+    const cl = el.classList;
+    if (!cl) return;
+    const seg = cl.contains("ytp-caption-segment");
+    if (!seg && !cl.contains("caption-window")) return;
+    if (inRollup(el)) {
+      // ロールアップは CSS 側で拡大する。以前の版がインラインに書いた値が残っていれば戻す。
+      if (marks.has(el)) scaleProp(el, seg ? "font-size" : "width", 1);
+      if (seg && entry && scale !== 1) noteRollupFont(entry, el);
+      return;
+    }
+    scaleProp(el, seg ? "font-size" : "width", scale);
+  }
+
+  function processTree(node, full, entry) {
     const scale = currentScale();
     if (scale === 1 && !full) return;
     if (node.nodeType !== 1) return;
-    if (node.classList.contains("ytp-caption-segment") || node.classList.contains("caption-window")) handleEl(node, scale);
+    if (node.classList.contains("ytp-caption-segment") || node.classList.contains("caption-window")) handleEl(node, scale, entry);
     if (node.firstElementChild) {
       const list = node.querySelectorAll(".caption-window, .ytp-caption-segment");
-      for (let i = 0; i < list.length; i++) handleEl(list[i], scale);
+      for (let i = 0; i < list.length; i++) handleEl(list[i], scale, entry);
     }
   }
 
@@ -299,11 +347,11 @@
       for (let i = 0; i < records.length; i++) {
         const record = records[i];
         if (record.type === "attributes") {
-          handleEl(record.target, scale);
+          handleEl(record.target, scale, entry);
         } else {
           const added = record.addedNodes;
           for (let j = 0; j < added.length; j++) {
-            if (added[j].nodeType === 1) processTree(added[j], false);
+            if (added[j].nodeType === 1) processTree(added[j], false, entry);
           }
         }
       }
@@ -315,6 +363,8 @@
   function attach(container) {
     if (watched.has(container)) return;
     const entry = {
+      container: container,
+      rfBase: "",
       player: container.closest(".html5-video-player") || container.parentElement,
       windows: container.getElementsByClassName("caption-window"), // ライブコレクション（安い）
       live: false,
@@ -324,7 +374,7 @@
     entry.obs = new MutationObserver((records) => onCaptionMutations(entry, records));
     entry.obs.observe(container, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     watched.set(container, entry);
-    processTree(container, false);
+    processTree(container, false, entry);
     updateLive(entry);
     entry.obs.takeRecords();
   }
@@ -333,6 +383,8 @@
     entry.obs.disconnect();
     if (entry.idle) clearTimeout(entry.idle);
     if (entry.player) entry.player.classList.remove(LIVE_CLASS);
+    container.classList.remove("ytic-rf");
+    container.style.removeProperty("--ytic-rf");
     watched.delete(container);
   }
 
