@@ -105,7 +105,8 @@
       .unit {
         font-size: 13px;
       }
-      label.row {
+      label.row,
+      div.row {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -181,6 +182,27 @@
       }
       button.key.is-on {
         border-color: #ff4d2e;
+      }
+      .poskeys {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: -4px;
+      }
+      .poskeys .row {
+        min-height: 38px;
+      }
+      button.key.poskey {
+        min-width: 84px;
+      }
+      button.key.is-unset {
+        color: #8a8378;
+      }
+      .hint {
+        margin: 0;
+        font-size: 11px;
+        color: #8a8378;
+        text-align: right;
       }
       .rgb {
         display: flex;
@@ -290,6 +312,17 @@
           </select>
         </span>
       </label>
+      <div class="poskeys">
+        <div class="row">
+          <span id="posUpLabel" data-i18n="posUp">高さを 1 段上げるキー</span>
+          <button id="posUpKey" class="key poskey" type="button" aria-labelledby="posUpLabel">E</button>
+        </div>
+        <div class="row">
+          <span id="posDownLabel" data-i18n="posDown">高さを 1 段下げるキー</span>
+          <button id="posDownKey" class="key poskey" type="button" aria-labelledby="posDownLabel">D</button>
+        </div>
+        <p class="hint" data-i18n="posKeyHint">クリックしてキーを押す（Backspace で解除）</p>
+      </div>
       <label class="check">
         <input id="edgeCustom" type="checkbox" />
         <span data-i18n="edgeColor">二重フチの色を指定</span>

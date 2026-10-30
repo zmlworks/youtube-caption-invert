@@ -8,6 +8,8 @@ const strokeWidth = document.getElementById("strokeWidth");
 const weight = document.getElementById("weight");
 const fontPct = document.getElementById("fontPct");
 const capPos = document.getElementById("capPos");
+const posUpBtn = document.getElementById("posUpKey");
+const posDownBtn = document.getElementById("posDownKey");
 const videoLayer = document.getElementById("videoLayer");
 const edgeCustom = document.getElementById("edgeCustom");
 const edgeColors = document.getElementById("edgeColors");
@@ -33,6 +35,10 @@ const TEXT = {
     capPos: "字幕の高さ",
     capPosDefault: "1（YouTube標準）",
     capPosTop: "10（いちばん上）",
+    posUp: "高さを 1 段上げるキー",
+    posDown: "高さを 1 段下げるキー",
+    posKeyHint: "クリックしてキーを押す（Backspace で解除）",
+    keyNone: "なし",
     edgeColor: "二重フチの色を指定",
     recording: "キー",
   },
@@ -53,6 +59,10 @@ const TEXT = {
     capPos: "Caption height",
     capPosDefault: "1 (YouTube default)",
     capPosTop: "10 (top)",
+    posUp: "Key: caption up 1 step",
+    posDown: "Key: caption down 1 step",
+    posKeyHint: "Click, then press a key (Backspace clears)",
+    keyNone: "None",
     edgeColor: "Set double-outline colors",
     recording: "Key",
   },
@@ -60,8 +70,14 @@ const TEXT = {
 const MID = [205, 225, 255];
 
 let shortcut = { alt: true, shift: true, ctrl: false, meta: false, key: "i", code: "KeyI" };
+const DEFAULT_UP = { alt: false, shift: false, ctrl: false, meta: false, key: "e", code: "KeyE" };
+const DEFAULT_DOWN = { alt: false, shift: false, ctrl: false, meta: false, key: "d", code: "KeyD" };
+let posUpKey = Object.assign({}, DEFAULT_UP);
+let posDownKey = Object.assign({}, DEFAULT_DOWN);
 let lang = "ja";
 let recording = false;
+let posRecording = null; // 記録中の高さキーのボタン（posUpBtn / posDownBtn）
+let posStoppedAt = 0;
 
 function normWeight(value) {
   const n = Number(value);
@@ -114,6 +130,17 @@ function normShortcut(value) {
   };
 }
 
+// 高さを 1 段動かすキー。null = 未設定、未保存なら既定（E / D）。
+function normPosKey(value, fallback) {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || !value.key) return Object.assign({}, fallback);
+  return normShortcut(value);
+}
+
+function sameKey(a, b) {
+  return !!a && !!b && a.alt === b.alt && a.shift === b.shift && a.ctrl === b.ctrl && a.meta === b.meta && (a.code && b.code ? a.code === b.code : a.key === b.key);
+}
+
 function formatShortcut(value) {
   const names = { " ": "Space", arrowup: "↑", arrowdown: "↓", arrowleft: "←", arrowright: "→" };
   const parts = [];
@@ -141,6 +168,8 @@ function migrate(data) {
     weight: fresh ? 700 : normWeight(data.weight),
     fontPct: normPct(data.fontPct),
     capPos: normPos(data.capPos),
+    posUpKey: normPosKey(data.posUpKey, DEFAULT_UP),
+    posDownKey: normPosKey(data.posDownKey, DEFAULT_DOWN),
     videoLayer: data.videoLayer === true,
     settingsRev: 1,
     lang: data.lang === "en" ? "en" : "ja",
@@ -188,6 +217,23 @@ function applyLang() {
   const fontOff = fontPct.querySelector('option[value="100"]');
   if (fontOff) fontOff.textContent = text.fontOff;
   if (recording) shortcutBtn.textContent = text.recording;
+  paintPosKeys();
+}
+
+function paintPosKeys() {
+  const text = TEXT[lang] || TEXT.ja;
+  [
+    [posUpBtn, posUpKey],
+    [posDownBtn, posDownKey],
+  ].forEach(([btn, key]) => {
+    if (posRecording === btn) {
+      btn.textContent = text.recording;
+      btn.classList.remove("is-unset");
+      return;
+    }
+    btn.textContent = key ? formatShortcut(key) : text.keyNone;
+    btn.classList.toggle("is-unset", !key);
+  });
 }
 
 function paint(data) {
@@ -205,6 +251,8 @@ function paint(data) {
   weight.value = String(next.weight);
   fontPct.value = String(next.fontPct);
   capPos.value = String(next.capPos);
+  posUpKey = next.posUpKey;
+  posDownKey = next.posDownKey;
   videoLayer.checked = next.videoLayer;
   edgeCustom.checked = next.edgeCustom;
   next.fill.forEach((channel, i) => {
@@ -231,6 +279,8 @@ function save(extra) {
         weight: normWeight(weight.value),
         fontPct: normPct(fontPct.value),
         capPos: normPos(capPos.value),
+        posUpKey: posUpKey,
+        posDownKey: posDownKey,
         videoLayer: videoLayer.checked,
         edgeCustom: edgeCustom.checked,
         fill: readRgb(fillInputs, [12, 39, 80]),
@@ -272,13 +322,69 @@ function onRecord(event) {
   save();
 }
 
+function stopPosRecord() {
+  if (!posRecording) return;
+  posRecording.classList.remove("is-on");
+  posRecording = null;
+  posStoppedAt = Date.now();
+  window.removeEventListener("keydown", onPosRecord, true);
+  paintPosKeys();
+}
+
+// 高さキーの記録: クリック → キーを押す（例 E、Shift+E）。Backspace / Delete で解除、Esc で取り消し。
+function onPosRecord(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const btn = posRecording;
+  if (!btn) return;
+  if (event.key === "Escape") {
+    stopPosRecord();
+    return;
+  }
+  if (event.key === "Alt" || event.key === "Shift" || event.key === "Control" || event.key === "Meta" || event.key === "Process" || event.isComposing) return;
+  let key = null;
+  if (!((event.key === "Backspace" || event.key === "Delete") && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey)) {
+    key = normShortcut({
+      alt: event.altKey,
+      shift: event.shiftKey,
+      ctrl: event.ctrlKey,
+      meta: event.metaKey,
+      key: event.key,
+      code: event.code,
+    });
+  }
+  if (btn === posUpBtn) {
+    posUpKey = key;
+    if (sameKey(key, posDownKey)) posDownKey = null; // 同じキーを両方に割り当てない
+  } else {
+    posDownKey = key;
+    if (sameKey(key, posUpKey)) posUpKey = null;
+  }
+  stopPosRecord();
+  save();
+}
+
+function startPosRecord(btn, event) {
+  // Space / Enter を記録した直後に、そのキーでボタンが押された扱い（detail 0 のクリック）になるのを無視する。
+  if (recording || (event && event.detail === 0 && Date.now() - posStoppedAt < 400)) return;
+  if (posRecording === btn) {
+    stopPosRecord();
+    return;
+  }
+  stopPosRecord();
+  posRecording = btn;
+  btn.classList.add("is-on");
+  paintPosKeys();
+  window.addEventListener("keydown", onPosRecord, true);
+}
+
 chrome.storage.local.get(null, (data) => {
   paint(data || {});
 });
 
 // ページ側のショートカットで動作が変わったときなど、開いているポップアップにも反映する。
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || recording) return;
+  if (area !== "local" || recording || posRecording) return;
   chrome.storage.local.get(null, (data) => {
     paint(data || {});
   });
@@ -319,7 +425,10 @@ langInput.addEventListener("change", () => {
   applyLang();
   save();
 });
+posUpBtn.addEventListener("click", (event) => startPosRecord(posUpBtn, event));
+posDownBtn.addEventListener("click", (event) => startPosRecord(posDownBtn, event));
 shortcutBtn.addEventListener("click", () => {
+  stopPosRecord();
   recording = true;
   shortcutBtn.classList.add("is-on");
   shortcutBtn.textContent = TEXT[lang].recording;

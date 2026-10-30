@@ -1,5 +1,5 @@
 /* 中央なしの反転・輪郭は元の字幕へ足す。中央寄せと二重フチは元の見た目を消して描き直す。 */
-/* 2.4.0: 字幕サイズ用の規則と、軽くした「映像を別レイヤー」の規則を追加。 2.4.1: 反転の合成を字幕の入れ物へ移動。 2.4.2: ロールアップ字幕の拡大と中央寄せを YouTube の計測と両立する方式に変更。 2.4.3: 字幕の高さを追加。 */
+/* 2.4.0: 字幕サイズ用の規則と、軽くした「映像を別レイヤー」の規則を追加。 2.4.1: 反転の合成を字幕の入れ物へ移動。 2.4.2: ロールアップ字幕の拡大と中央寄せを YouTube の計測と両立する方式に変更。 2.4.3: 字幕の高さを追加。 2.4.7: ドラッグ後の高さ変更（保持）と、高さ表示を追加。 */
 
 html.ytic-on .ytp-caption-window-container,
 html.ytic-on .caption-window,
@@ -171,3 +171,45 @@ html.ytic-on[data-ytic-pos="7"] .caption-window.ytp-caption-window-bottom[style*
 html.ytic-on[data-ytic-pos="8"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 22% !important; }
 html.ytic-on[data-ytic-pos="9"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 12% !important; }
 html.ytic-on[data-ytic-pos="10"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 2% !important; }
+
+/* 字幕の高さの保持（2.4.7）。ドラッグで YouTube の既定の位置が変わったあと、ポップアップやキーで高さを
+   変えたときだけ、ドラッグした位置にある枠（content.js が data-ytic-held を付ける）を選んだ段階へ移す。
+   html の data-ytic-hold は保持中だけ付き、値は段階（1 = YouTube 標準の bottom: 2%）。
+   ・YouTube が測っている途中（max-height を書いている）には効かない。
+   ・中段に置かれた枠は margin-top か translateY(-50%) で縦の中央を合わせているので、その分を打ち消す。
+   ・左右の位置はドラッグしたまま（変えるのは上下だけ）。 */
+html.ytic-on[data-ytic-hold] .caption-window[data-ytic-held]:not([style*="max-height"])[style*="margin-top"] { margin-top: 0 !important; }
+html.ytic-on[data-ytic-hold] .caption-window[data-ytic-held]:not([style*="max-height"])[style*="translateY(-50%)"] { translate: 0 50% !important; }
+html.ytic-on[data-ytic-hold][data-ytic-center="1"] .caption-window[data-ytic-held]:not([style*="max-height"])[style*="translateY(-50%)"][style*="translateX(-50%)"] { translate: 50% 50% !important; }
+html.ytic-on[data-ytic-hold="1"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 2% !important; }
+html.ytic-on[data-ytic-hold="2"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 12% !important; }
+html.ytic-on[data-ytic-hold="3"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 22% !important; }
+html.ytic-on[data-ytic-hold="4"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 32% !important; }
+html.ytic-on[data-ytic-hold="5"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 42% !important; }
+html.ytic-on[data-ytic-hold="6"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 42% !important; }
+html.ytic-on[data-ytic-hold="7"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 32% !important; }
+html.ytic-on[data-ytic-hold="8"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 22% !important; }
+html.ytic-on[data-ytic-hold="9"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 12% !important; }
+html.ytic-on[data-ytic-hold="10"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 2% !important; }
+
+/* キーで高さを変えたときの小さな表示（2.4.7）。プレーヤーの上端中央に 1 秒だけ出る。 */
+.ytic-badge {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 75;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(20, 19, 17, 0.8);
+  color: #f3efe6;
+  font: 600 13px/1.5 "Roboto", "Hiragino Sans", "IPA Pゴシック", sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ytic-badge.ytic-badge-on {
+  opacity: 1;
+  transition: opacity 0.08s;
+}

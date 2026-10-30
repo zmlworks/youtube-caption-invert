@@ -1,4 +1,7 @@
-/* 字幕の色を反転 2.4.3
+/* 字幕の色を反転 2.4.7
+ * - 字幕の高さ（2.4.7）: ドラッグした後でも、ポップアップ（またはキー）で高さを変えたら、ドラッグした位置の
+ *   字幕を選んだ段階へ移す（「保持」）。もう一度ドラッグすると、またドラッグした位置が優先される。
+ *   E / D（変更可）で 1 段ずつ上下でき、値はポップアップと同じ設定（capPos）に保存する。
  * - 反転 / 反転+輪郭 / 二重フチ は CSS（invert.css）で描く。ここではクラスと CSS 変数を切り替えるだけ。
  * - 字幕サイズ: YouTube は .ytp-caption-segment のインライン style に font-size を書き、
  *   プレーヤーのサイズが変わるたびに書き直す。その値を元に倍率をかけて !important で上書きする。
@@ -23,12 +26,16 @@
   const path = location.pathname || "";
   if (isTop ? /^\/live_chat/.test(path) : !/^\/embed\//.test(path)) return;
 
-  if (root.dataset.yticExt === "243") return;
-  root.dataset.yticExt = "243";
+  if (root.dataset.yticExt === "247") return;
+  root.dataset.yticExt = "247";
 
   const MODES = ["invert", "stroke", "edge"];
   const FONT_STEPS = [50, 75, 100, 150, 200, 300, 400];
   const DEFAULT_SHORTCUT = { alt: true, shift: true, ctrl: false, meta: false, key: "i", code: "KeyI" };
+  const DEFAULT_UP = { alt: false, shift: false, ctrl: false, meta: false, key: "e", code: "KeyE" };
+  const DEFAULT_DOWN = { alt: false, shift: false, ctrl: false, meta: false, key: "d", code: "KeyD" };
+  const POS_MAX = 10;
+  const HELD = "data-ytic-held";
   const DEFAULT_FILL = [12, 39, 80];
   const DEFAULT_MID = [205, 225, 255];
   const LIVE_CLASS = "ytic-cc-live";
@@ -44,6 +51,9 @@
     weight: 700,
     fontPct: 100,
     capPos: 1,
+    posUpKey: Object.assign({}, DEFAULT_UP),
+    posDownKey: Object.assign({}, DEFAULT_DOWN),
+    lang: "ja",
     videoLayer: false,
     edgeCustom: false,
     fill: DEFAULT_FILL.slice(),
@@ -102,6 +112,13 @@
     };
   }
 
+  // 高さを 1 段動かすキー。null = 未設定（使わない）、未保存なら既定（E / D）。
+  function normPosKey(value, fallback) {
+    if (value === null) return null;
+    if (!value || typeof value !== "object" || !value.key) return Object.assign({}, fallback);
+    return normShortcut(value);
+  }
+
   function migrate(data) {
     const fresh = data.settingsRev !== 1;
     const colors = {
@@ -117,6 +134,8 @@
       weight: fresh ? 700 : normWeight(data.weight),
       fontPct: normPct(data.fontPct),
       capPos: normPos(data.capPos),
+      posUpKey: normPosKey(data.posUpKey, DEFAULT_UP),
+      posDownKey: normPosKey(data.posDownKey, DEFAULT_DOWN),
       videoLayer: data.videoLayer === true,
       settingsRev: 1,
       lang: data.lang === "en" ? "en" : "ja",
@@ -142,6 +161,9 @@
     state.weight = next.weight;
     state.fontPct = next.fontPct;
     state.capPos = next.capPos;
+    state.posUpKey = next.posUpKey;
+    state.posDownKey = next.posDownKey;
+    state.lang = next.lang;
     state.videoLayer = next.videoLayer;
     state.edgeCustom = next.edgeCustom;
     state.fill = next.fill;
@@ -212,6 +234,11 @@
     if (pos) {
       if (root.dataset.yticPos !== pos) root.dataset.yticPos = pos;
     } else delete root.dataset.yticPos;
+    // ドラッグ後にポップアップ／キーで高さを変えたとき（保持中）は、ドラッグした位置の字幕も動かす。1 も含む。
+    const hold = on && drag.held ? String(state.capPos) : "";
+    if (hold) {
+      if (root.dataset.yticHold !== hold) root.dataset.yticHold = hold;
+    } else delete root.dataset.yticHold;
     root.classList.toggle("ytic-invert", on && state.mode === "invert");
     root.classList.toggle("ytic-stroke", on && state.mode === "stroke");
     root.classList.toggle("ytic-mode-edge", on && state.mode === "edge");
@@ -226,6 +253,128 @@
       updateLive(entry);
       entry.obs.takeRecords(); // 自分で書いた style の変更は捨てる
     });
+    syncHeld();
+  }
+
+  /* ---------- ドラッグと高さの保持（2.4.7） ----------
+     YouTube は字幕をドラッグすると、その位置（段・上下左右の割合）をプレーヤーの既定の位置として覚え、
+     以後の字幕もすべてその位置に置く（再読み込みまで）。invert.css の高さの規則は YouTube 標準の位置
+     （bottom: 2%）の枠だけが対象なので、ドラッグ後はポップアップで高さを変えても効かなかった。
+     そこで、ドラッグしたときの位置（インラインの bottom/top と left/right）を覚えておき、その後ポップアップや
+     キーで高さを変えたら「保持」にして、同じ位置の枠に印（data-ytic-held）を付けて CSS で選んだ段階へ移す。
+     投稿者が位置を指定した字幕は位置が違うので動かさない。もう一度ドラッグしたら保持をやめる。 */
+
+  const drag = { sig: "", held: false, el: null };
+
+  // 枠の位置の目印。YouTube が測っている途中（max-height を書いている）なら "" を返す。
+  function winSig(el) {
+    const st = el.style;
+    if (st.maxHeight) return "";
+    const v = st.bottom ? "b" + st.bottom : st.top ? "t" + st.top : "";
+    if (!v) return "";
+    return v + "|" + (st.left ? "l" + st.left : st.right ? "r" + st.right : "");
+  }
+
+  function setHeld(el, on) {
+    if (on) {
+      if (!el.hasAttribute(HELD)) el.setAttribute(HELD, "");
+    } else if (el.hasAttribute(HELD)) el.removeAttribute(HELD);
+  }
+
+  function eachWindow(fn) {
+    watched.forEach((entry, container) => {
+      const list = container.getElementsByClassName("caption-window");
+      for (let i = list.length - 1; i >= 0; i--) fn(list[i]);
+    });
+  }
+
+  function syncHeld() {
+    if (drag.held && drag.sig) {
+      eachWindow((el) => {
+        if (el.classList.contains("ytp-dragging")) setHeld(el, false);
+        else {
+          const sig = winSig(el);
+          if (sig) setHeld(el, sig === drag.sig);
+        }
+      });
+    } else eachWindow((el) => setHeld(el, false));
+  }
+
+  // style が変わった枠 / 追加された枠ごとに呼ぶ。
+  function checkWindow(el) {
+    if (el.classList.contains("ytp-dragging")) {
+      // ユーザーがドラッグ中。YouTube がこの位置を書いたあとなので、ここで保持をやめても跳ねない。
+      const sig = winSig(el);
+      if (sig) drag.sig = sig;
+      drag.el = el;
+      setHeld(el, false);
+      if (drag.held) {
+        drag.held = false;
+        delete root.dataset.yticHold;
+        syncHeld();
+      }
+      return;
+    }
+    if (!drag.held || !drag.sig) return;
+    const sig = winSig(el);
+    if (sig) setHeld(el, sig === drag.sig);
+  }
+
+  function trackWindows(records) {
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      if (record.type === "attributes") {
+        const target = record.target;
+        if (target.classList && target.classList.contains("caption-window")) checkWindow(target);
+      } else if (drag.held) {
+        const added = record.addedNodes;
+        for (let j = 0; j < added.length; j++) {
+          const node = added[j];
+          if (node.nodeType !== 1) continue;
+          if (node.classList.contains("caption-window")) checkWindow(node);
+          else if (node.firstElementChild) {
+            const list = node.getElementsByClassName("caption-window");
+            for (let k = 0; k < list.length; k++) checkWindow(list[k]);
+          }
+        }
+      }
+    }
+  }
+
+  // 段階ごとの「枠の上端」（プレーヤーの高さに対する割合）。invert.css の値と同じ。h = 枠の高さの割合。
+  const POS_BOTTOM = { 1: 0.02, 2: 0.12, 3: 0.22, 4: 0.32, 5: 0.42 };
+  const POS_TOP = { 6: 0.42, 7: 0.32, 8: 0.22, 9: 0.12, 10: 0.02 };
+
+  function stepTop(step, h) {
+    return step <= 5 ? 1 - POS_BOTTOM[step] - h : POS_TOP[step];
+  }
+
+  function nearestStep(top, h) {
+    let best = 1;
+    for (let s = 2; s <= POS_MAX; s++) {
+      if (Math.abs(stepTop(s, h) - top) < Math.abs(stepTop(best, h) - top)) best = s;
+    }
+    return best;
+  }
+
+  // ドラッグした字幕が今どの段階に一番近いか。見えている枠を測る。無ければ覚えている位置から見積もる。
+  function draggedStep() {
+    let el = drag.el && drag.el.isConnected && drag.el.offsetHeight ? drag.el : null;
+    if (!el) {
+      eachWindow((w) => {
+        if (!el && w.offsetHeight && winSig(w) === drag.sig) el = w;
+      });
+    }
+    if (el) {
+      const box = el.parentElement && el.parentElement.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      if (box && box.height > 0) return nearestStep((r.top - box.top) / box.height, r.height / box.height);
+    }
+    const m = /^([bt])(-?[\d.]+)%/.exec(drag.sig);
+    if (!m) return state.capPos;
+    const h = 0.1; // 字幕 1〜2 行ぶんのおおよその高さ
+    const v = parseFloat(m[2]) / 100;
+    return nearestStep(m[1] === "b" ? 1 - v - h : v, h);
   }
 
   /* ---------- 字幕サイズ ---------- */
@@ -356,6 +505,7 @@
   const watched = new Map(); // container -> entry
 
   function onCaptionMutations(entry, records) {
+    trackWindows(records);
     if (currentScale() !== 1) {
       const scale = currentScale();
       for (let i = 0; i < records.length; i++) {
@@ -441,13 +591,94 @@
     return (event.key || "").toLowerCase() === shortcut.key;
   }
 
+  // 高さのキー（2.4.7）。押しっぱなしでも続けて動く。修飾キーは記録どおりに一致したときだけ。
+  function matchKey(event, key) {
+    if (!key) return false;
+    if (!!event.altKey !== !!key.alt) return false;
+    if (!!event.shiftKey !== !!key.shift) return false;
+    if (!!event.ctrlKey !== !!key.ctrl) return false;
+    if (!!event.metaKey !== !!key.meta) return false;
+    if (key.code && event.code === key.code) return true;
+    return (event.key || "").toLowerCase() === key.key;
+  }
+
+  function isTyping(target) {
+    const tag = target && target.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!(target && target.isContentEditable);
+  }
+
+  // 表示中のプレーヤー（フォーカスのあるもの、なければ一番大きいもの）。
+  function activePlayer() {
+    let best = null;
+    let area = 0;
+    const active = document.activeElement;
+    watched.forEach((entry) => {
+      const player = entry.player;
+      if (!player || !player.isConnected) return;
+      const a = player.offsetWidth * player.offsetHeight;
+      if (!a) return;
+      const focused = active && player.contains(active);
+      if (focused && !(best && best.contains(active))) {
+        best = player;
+        area = Infinity;
+      } else if (a > area) {
+        best = player;
+        area = a;
+      }
+    });
+    return best;
+  }
+
+  let badge = null;
+  let badgeTimer = 0;
+
+  function showBadge(pos) {
+    const player = activePlayer();
+    if (!player) return;
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.className = "ytic-badge";
+      badge.setAttribute("aria-live", "polite");
+    }
+    if (badge.parentNode !== player) player.appendChild(badge);
+    badge.textContent = (state.lang === "en" ? "Caption height " : "字幕の高さ ") + pos + "/" + POS_MAX;
+    badge.classList.add("ytic-badge-on");
+    if (badgeTimer) clearTimeout(badgeTimer);
+    badgeTimer = setTimeout(() => {
+      badgeTimer = 0;
+      if (badge) badge.classList.remove("ytic-badge-on");
+    }, 1000);
+  }
+
+  function stepHeight(dir) {
+    // ドラッグした位置が優先されているときは、今の字幕の位置に一番近い段階から動かす。
+    const from = drag.sig && !drag.held ? draggedStep() : state.capPos;
+    const next = Math.max(1, Math.min(POS_MAX, from + dir));
+    state.capPos = next;
+    if (drag.sig) drag.held = true;
+    apply();
+    showBadge(next);
+    try {
+      chrome.storage.local.set({ capPos: next });
+    } catch (e) {
+      /* 拡張機能の更新直後など。表示は変わっているので無視する。 */
+    }
+  }
+
   document.addEventListener(
     "keydown",
     (event) => {
+      if (state.enabled === true && watched.size && !event.isComposing) {
+        const dir = matchKey(event, state.posUpKey) ? 1 : matchKey(event, state.posDownKey) ? -1 : 0;
+        if (dir && !isTyping(event.target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          stepHeight(dir);
+          return;
+        }
+      }
       if (!matchShortcut(event)) return;
-      const target = event.target;
-      const tag = target && target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (target && target.isContentEditable)) return;
+      if (isTyping(event.target)) return;
       event.preventDefault();
       event.stopPropagation();
       const index = MODES.indexOf(state.mode);
@@ -480,7 +711,10 @@
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local") load(false);
+    if (area !== "local") return;
+    // ポップアップ（または別のタブのキー）で高さが変わった。ドラッグした位置より優先する。
+    if (changes.capPos && drag.sig && normPos(changes.capPos.newValue) !== state.capPos) drag.held = true;
+    load(false);
   });
 
   load(true);
