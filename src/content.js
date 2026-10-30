@@ -1,4 +1,4 @@
-/* 字幕の色を反転 2.4.7
+/* 字幕の色を反転 2.4.8
  * - 字幕の高さ（2.4.7）: ドラッグした後でも、ポップアップ（またはキー）で高さを変えたら、ドラッグした位置の
  *   字幕を選んだ段階へ移す（「保持」）。もう一度ドラッグすると、またドラッグした位置が優先される。
  *   E / D（変更可）で 1 段ずつ上下でき、値はポップアップと同じ設定（capPos）に保存する。
@@ -148,6 +148,26 @@
     if (data.phase === "invert") return Object.assign({ enabled: true, mode: "invert" }, common, colors);
     if (data.enabled === false) return Object.assign({ enabled: false, mode: "invert" }, common, colors);
     return Object.assign({ enabled: true, mode: "invert" }, common, colors);
+  }
+
+  // 移行で必要な書き込みだけ: 保存値と移行後の値が違うキー（未保存で既定値のままのキーは除く）＋ settingsRev。
+  function migrationPatch(data) {
+    const next = migrate(data);
+    const base = migrate({ settingsRev: 1 });
+    const patch = {};
+    Object.keys(next).forEach((k) => {
+      const v = JSON.stringify(next[k]);
+      if (v === JSON.stringify(data[k])) return;
+      if (data[k] === undefined && v === JSON.stringify(base[k])) return;
+      patch[k] = next[k];
+    });
+    if (data.settingsRev !== 1) patch.settingsRev = 1;
+    // 旧形式（phase など）から決まる動作は、enabled / mode として明示的に保存する
+    if (!(MODES.indexOf(data.mode) >= 0 && typeof data.enabled === "boolean")) {
+      patch.enabled = next.enabled;
+      patch.mode = next.mode;
+    }
+    return patch;
   }
 
   function applyStored(data) {
@@ -602,19 +622,41 @@
     return (event.key || "").toLowerCase() === key.key;
   }
 
-  function isTyping(target) {
+  // composedPath()[0]: the real element inside a shadow root (event.target is retargeted to the host).
+  function isTyping(event) {
+    const path = event.composedPath ? event.composedPath() : [];
+    const target = (path.length && path[0]) || event.target;
     const tag = target && target.tagName;
     return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!(target && target.isContentEditable);
   }
 
+  // 字幕が実際に出ているプレーヤーだけで高さのキーを使う（2.4.8）。字幕オフのプレーヤーやホームのプレビューの
+  // 字幕コンテナは常にあるので、コンテナの有無では判定しない。字幕ボタンがオン、または字幕が表示中。
+  function captionsShown(player) {
+    if (!player || !player.isConnected || !player.offsetWidth || !player.offsetHeight) return false;
+    if (player.querySelector('.ytp-subtitles-button[aria-pressed="true"]')) return true;
+    const list = player.getElementsByClassName("caption-window");
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i].getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && (list[i].textContent || "").trim()) return true;
+    }
+    return false;
+  }
+
+  function captionPlayer() {
+    const player = activePlayer(captionsShown);
+    return player && captionsShown(player) ? player : null;
+  }
+
   // 表示中のプレーヤー（フォーカスのあるもの、なければ一番大きいもの）。
-  function activePlayer() {
+  function activePlayer(filter) {
     let best = null;
     let area = 0;
     const active = document.activeElement;
     watched.forEach((entry) => {
       const player = entry.player;
       if (!player || !player.isConnected) return;
+      if (filter && !filter(player)) return;
       const a = player.offsetWidth * player.offsetHeight;
       if (!a) return;
       const focused = active && player.contains(active);
@@ -633,7 +675,7 @@
   let badgeTimer = 0;
 
   function showBadge(pos) {
-    const player = activePlayer();
+    const player = captionPlayer() || activePlayer();
     if (!player) return;
     if (!badge) {
       badge = document.createElement("div");
@@ -658,19 +700,43 @@
     if (drag.sig) drag.held = true;
     apply();
     showBadge(next);
+    // 押しっぱなし（キーリピート）で毎回保存すると、全タブが毎回読み直すので、まとめて保存する（2.4.8）。
+    pendingPos = next;
+    if (!posSaveTimer) posSaveTimer = setTimeout(flushPos, 300);
+  }
+
+  let pendingPos = 0;
+  let posSaveTimer = 0;
+  function flushPos() {
+    posSaveTimer = 0;
+    const pos = pendingPos;
+    pendingPos = 0;
+    if (!pos) return;
     try {
-      chrome.storage.local.set({ capPos: next });
+      chrome.storage.local.set({ capPos: pos });
     } catch (e) {
       /* 拡張機能の更新直後など。表示は変わっているので無視する。 */
     }
   }
+  document.addEventListener("keyup", () => {
+    if (posSaveTimer) {
+      clearTimeout(posSaveTimer);
+      flushPos();
+    }
+  }, true);
+  window.addEventListener("pagehide", () => {
+    if (posSaveTimer) {
+      clearTimeout(posSaveTimer);
+      flushPos();
+    }
+  });
 
   document.addEventListener(
     "keydown",
     (event) => {
       if (state.enabled === true && watched.size && !event.isComposing) {
         const dir = matchKey(event, state.posUpKey) ? 1 : matchKey(event, state.posDownKey) ? -1 : 0;
-        if (dir && !isTyping(event.target)) {
+        if (dir && !isTyping(event) && captionPlayer()) {
           event.preventDefault();
           event.stopPropagation();
           stepHeight(dir);
@@ -678,7 +744,7 @@
         }
       }
       if (!matchShortcut(event)) return;
-      if (isTyping(event.target)) return;
+      if (isTyping(event)) return;
       event.preventDefault();
       event.stopPropagation();
       const index = MODES.indexOf(state.mode);
@@ -700,10 +766,16 @@
     try {
       chrome.storage.local.get(null, (data) => {
         if (chrome.runtime.lastError) return;
-        const stored = data || {};
+        const stored = Object.assign({}, data || {});
+        if (pendingPos) stored.capPos = pendingPos; // まだ保存していないキー操作の高さを優先
         applyStored(stored);
         apply();
-        if (first && stored.settingsRev !== 1) chrome.storage.local.set(migrate(stored));
+        if (first && stored.settingsRev !== 1) {
+          // 2.4.8: 全設定ではなく、移行で値が変わるキーと settingsRev だけを書く（ポップアップや他のタブの書き込みを
+          // 古い値で上書きしないように）。既定値のままのキーは書かない。
+          const patch = migrationPatch(data || {});
+          if (Object.keys(patch).length) chrome.storage.local.set(patch);
+        }
       });
     } catch (e) {
       /* ignore */

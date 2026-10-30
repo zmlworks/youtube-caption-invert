@@ -28,7 +28,8 @@ async function open(store) {
       Object.assign(w.style, { top: "", left: "50%", maxHeight: "", marginLeft: -w.offsetWidth / 2 + "px" }, pos);
       setTimeout(() => { w.classList.remove("ytp-dragging"); done(); }, 30);
     });
-    window.key = (init, target) => (target || document.body).dispatchEvent(new KeyboardEvent("keydown", Object.assign({ bubbles: true, cancelable: true }, init)));
+    // keydown → keyup（2.4.8: 高さの保存はキーを離したとき／300ms 後にまとめて行う）
+    window.key = (init, target) => { const r = (target || document.body).dispatchEvent(new KeyboardEvent("keydown", Object.assign({ bubbles: true, cancelable: true }, init))); (target || document.body).dispatchEvent(new KeyboardEvent("keyup", Object.assign({ bubbles: true, cancelable: true }, init))); return r; };
   });
   await page.waitForTimeout(250);
   return page;

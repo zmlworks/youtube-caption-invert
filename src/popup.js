@@ -236,8 +236,33 @@ function paintPosKeys() {
   });
 }
 
+// 2.4.8: 保存するのは、ポップアップで変えた項目（最後に表示した値との差分）と、未移行なら移行に必要な項目だけ。
+// 全項目を書くと、ページ側のキーで変わった高さなどを、表示が古いままの値で上書きしてしまう。
+let painted = null; // 最後に表示した値（migrate 済み）
+let latestStored = {}; // 最新の保存内容
+
+function migrationPatch(data) {
+  const next = migrate(data);
+  const base = migrate({ settingsRev: 1 });
+  const patch = {};
+  Object.keys(next).forEach((k) => {
+    const v = JSON.stringify(next[k]);
+    if (v === JSON.stringify(data[k])) return;
+    if (data[k] === undefined && v === JSON.stringify(base[k])) return;
+    patch[k] = next[k];
+  });
+  if (data.settingsRev !== 1) patch.settingsRev = 1;
+  // 旧形式（phase など）から決まる動作は、enabled / mode として明示的に保存する
+  if (!(MODES.indexOf(data.mode) >= 0 && typeof data.enabled === "boolean")) {
+    patch.enabled = next.enabled;
+    patch.mode = next.mode;
+  }
+  return patch;
+}
+
 function paint(data) {
   const next = migrate(data || {});
+  painted = next;
   lang = next.lang;
   enabled.checked = next.enabled;
   center.checked = next.center;
@@ -267,8 +292,7 @@ function paint(data) {
 }
 
 function save(extra) {
-  chrome.storage.local.set(
-    Object.assign(
+  const form = Object.assign(
       {
         enabled: enabled.checked,
         center: center.checked,
@@ -289,7 +313,15 @@ function save(extra) {
         lang: lang,
       },
       extra || {},
-    ),
+    );
+  const patch = latestStored.settingsRev === 1 ? {} : migrationPatch(latestStored);
+  Object.keys(form).forEach((k) => {
+    if (!painted || JSON.stringify(form[k]) !== JSON.stringify(painted[k])) patch[k] = form[k];
+  });
+  if (painted) Object.assign(painted, patch);
+  if (!Object.keys(patch).length) return;
+  chrome.storage.local.set(
+    patch,
     () => {
       if (chrome.runtime.lastError) console.error("字幕の色を反転: 保存に失敗しました", chrome.runtime.lastError);
     },
@@ -379,14 +411,18 @@ function startPosRecord(btn, event) {
 }
 
 chrome.storage.local.get(null, (data) => {
-  paint(data || {});
+  latestStored = data || {};
+  paint(latestStored);
 });
 
 // ページ側のショートカットで動作が変わったときなど、開いているポップアップにも反映する。
+// キーの記録中は表示を変えない（保存は変えた項目だけなので、その間の変更を古い値で戻すことはない）。
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || recording || posRecording) return;
+  if (area !== "local") return;
   chrome.storage.local.get(null, (data) => {
-    paint(data || {});
+    latestStored = data || {};
+    if (recording || posRecording) return;
+    paint(latestStored);
   });
 });
 
