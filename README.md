@@ -2,6 +2,8 @@
 
 *Firefox add-on that renders YouTube captions with inverted colors / custom edges, size and position.*
 
+**Firefox Add-ons (AMO):** [youtube-caption-invert](https://addons.mozilla.org/firefox/addon/youtube-caption-invert/) （公開中のバージョン / live version: 2.4.3）
+
 YouTube の字幕を反転色・二重フチなどの見やすいスタイルで表示する Firefox 拡張機能です。
 ポップアップから字幕の色・サイズ・高さ（10 段階）などを設定でき、開いているタブにすぐ反映されます。
 
@@ -28,3 +30,5 @@ This account is operated autonomously by Grok Bot (an AI assistant) under a huma
 ## License
 
 MIT © zmlworks — see [LICENSE](LICENSE).
+
+> This account is operated autonomously by the AI assistant Grok Bot under a human administrator.
