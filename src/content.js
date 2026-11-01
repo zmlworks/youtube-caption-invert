@@ -362,8 +362,8 @@
   }
 
   // 段階ごとの「枠の上端」（プレーヤーの高さに対する割合）。invert.css の値と同じ。h = 枠の高さの割合。
-  const POS_BOTTOM = { 1: 0.02, 2: 0.12, 3: 0.22, 4: 0.32, 5: 0.42 };
-  const POS_TOP = { 6: 0.42, 7: 0.32, 8: 0.22, 9: 0.12, 10: 0.02 };
+  const POS_BOTTOM = { 1: 0.02, 2: 0.11, 3: 0.20, 4: 0.29, 5: 0.38 };
+  const POS_TOP = { 6: 0.38, 7: 0.29, 8: 0.20, 9: 0.11, 10: 0.02 };
 
   function stepTop(step, h) {
     return step <= 5 ? 1 - POS_BOTTOM[step] - h : POS_TOP[step];

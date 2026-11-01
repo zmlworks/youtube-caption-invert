@@ -162,14 +162,14 @@ html.ytic-on.ytic-scaled .caption-window:not(.ytp-caption-window-rollup).ytp-cap
      高さ・幅・transform には触らず、bottom / top だけを変える。
    ・2〜5 は下端の位置（bottom）を指定。YouTube の操作バー回避（margin-bottom）はそのまま働く。
    ・6〜10 は上端の位置（top）を指定し、下へ伸びるので上にはみ出さない。操作バーが出ても動かない。 */
-html.ytic-on[data-ytic-pos="2"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 12% !important; }
-html.ytic-on[data-ytic-pos="3"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 22% !important; }
-html.ytic-on[data-ytic-pos="4"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 32% !important; }
-html.ytic-on[data-ytic-pos="5"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 42% !important; }
-html.ytic-on[data-ytic-pos="6"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 42% !important; }
-html.ytic-on[data-ytic-pos="7"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 32% !important; }
-html.ytic-on[data-ytic-pos="8"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 22% !important; }
-html.ytic-on[data-ytic-pos="9"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 12% !important; }
+html.ytic-on[data-ytic-pos="2"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 11% !important; }
+html.ytic-on[data-ytic-pos="3"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 20% !important; }
+html.ytic-on[data-ytic-pos="4"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 29% !important; }
+html.ytic-on[data-ytic-pos="5"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: 38% !important; }
+html.ytic-on[data-ytic-pos="6"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 38% !important; }
+html.ytic-on[data-ytic-pos="7"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 29% !important; }
+html.ytic-on[data-ytic-pos="8"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 20% !important; }
+html.ytic-on[data-ytic-pos="9"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 11% !important; }
 html.ytic-on[data-ytic-pos="10"] .caption-window.ytp-caption-window-bottom[style*="bottom: 2%"] { bottom: auto !important; top: 2% !important; }
 
 /* 字幕の高さの保持（2.4.7）。ドラッグで YouTube の既定の位置が変わったあと、ポップアップやキーで高さを
@@ -182,14 +182,14 @@ html.ytic-on[data-ytic-hold] .caption-window[data-ytic-held]:not([style*="max-he
 html.ytic-on[data-ytic-hold] .caption-window[data-ytic-held]:not([style*="max-height"])[style*="translateY(-50%)"] { translate: 0 50% !important; }
 html.ytic-on[data-ytic-hold][data-ytic-center="1"] .caption-window[data-ytic-held]:not([style*="max-height"])[style*="translateY(-50%)"][style*="translateX(-50%)"] { translate: 50% 50% !important; }
 html.ytic-on[data-ytic-hold="1"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 2% !important; }
-html.ytic-on[data-ytic-hold="2"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 12% !important; }
-html.ytic-on[data-ytic-hold="3"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 22% !important; }
-html.ytic-on[data-ytic-hold="4"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 32% !important; }
-html.ytic-on[data-ytic-hold="5"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 42% !important; }
-html.ytic-on[data-ytic-hold="6"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 42% !important; }
-html.ytic-on[data-ytic-hold="7"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 32% !important; }
-html.ytic-on[data-ytic-hold="8"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 22% !important; }
-html.ytic-on[data-ytic-hold="9"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 12% !important; }
+html.ytic-on[data-ytic-hold="2"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 11% !important; }
+html.ytic-on[data-ytic-hold="3"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 20% !important; }
+html.ytic-on[data-ytic-hold="4"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 29% !important; }
+html.ytic-on[data-ytic-hold="5"] .caption-window[data-ytic-held]:not([style*="max-height"]) { top: auto !important; bottom: 38% !important; }
+html.ytic-on[data-ytic-hold="6"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 38% !important; }
+html.ytic-on[data-ytic-hold="7"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 29% !important; }
+html.ytic-on[data-ytic-hold="8"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 20% !important; }
+html.ytic-on[data-ytic-hold="9"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 11% !important; }
 html.ytic-on[data-ytic-hold="10"] .caption-window[data-ytic-held]:not([style*="max-height"]) { bottom: auto !important; top: 2% !important; }
 
 /* キーで高さを変えたときの小さな表示（2.4.7）。プレーヤーの上端中央に 1 秒だけ出る。 */
